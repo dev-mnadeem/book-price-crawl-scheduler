@@ -98,6 +98,18 @@ class TestCosmetic:
         assert any("description" in r for r in assessment.reasons)
 
 
+class TestDerivedStockFlag:
+    def test_selling_out_is_reported_once(self):
+        assessment = classify([diff("availability", 4, 0), diff("in_stock", True, False)])
+        assert assessment.severity == CRITICAL
+        assert assessment.reasons == ["went out of stock"]
+
+    def test_the_flag_alone_still_counts(self):
+        assessment = classify([diff("in_stock", True, False)])
+        assert assessment.severity == CRITICAL
+        assert assessment.reasons == ["marked out of stock"]
+
+
 class TestSeverityCombination:
     def test_the_worst_signal_wins(self):
         assessment = classify([diff("price_incl_tax", 50.0, 20.0), diff("availability", 8, 0)])

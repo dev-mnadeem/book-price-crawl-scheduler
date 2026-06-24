@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 
 from app.config.logging import setup_logging
@@ -21,13 +22,13 @@ async def main() -> None:
     got = await acquire_lock(db, lock_name, owner="runner")
     if not got:
         logger.info("Another crawl is in progress; exiting runner")
-        print({"status": "skipped", "reason": "lock_not_acquired"})
+        print(json.dumps({"status": "skipped", "reason": "lock_not_acquired"}))
         await close_client()
         return
     try:
         summary = await run_full_crawl(db)
         logger.info("One-off crawl finished", extra=summary)
-        print(summary)
+        print(json.dumps(summary))
     finally:
         await release_lock(db, lock_name, owner="runner")
         await close_client()

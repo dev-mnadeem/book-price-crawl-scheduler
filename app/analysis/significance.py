@@ -186,7 +186,9 @@ def classify(diffs: Iterable[Mapping[str, Any]], change_type: str = "update") ->
             reasons.append(reason)
         signals.update(extra)
 
-    if "in_stock" in fields:
+    # The crawler derives in_stock from availability, so when both changed the
+    # stock rule above has already said it; repeating it only adds noise.
+    if "in_stock" in fields and "availability" not in fields:
         old, new = fields["in_stock"]
         if old and not new:
             severities.append(CRITICAL)
