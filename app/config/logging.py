@@ -1,14 +1,16 @@
 from __future__ import annotations
 
 import logging
-import os
-from logging import Handler, LogRecord
+from logging import LogRecord
 from pathlib import Path
 from typing import Any, Dict
 
 import orjson
 
 from app.config.settings import settings
+
+# Attributes every LogRecord has; anything else on the record came from extra=.
+_RECORD_FIELDS = set(vars(logging.makeLogRecord({}))) | {"message", "asctime", "taskName"}
 
 
 class ORJSONFormatter(logging.Formatter):
@@ -22,35 +24,30 @@ class ORJSONFormatter(logging.Formatter):
             "func": record.funcName,
             "line": record.lineno,
         }
+        for key, value in vars(record).items():
+            if key not in _RECORD_FIELDS and key not in payload:
+                payload[key] = value
         if record.exc_info:
             payload["exc_info"] = self.formatException(record.exc_info)
-        return orjson.dumps(payload).decode()
+        return orjson.dumps(payload, default=str).decode()
 
 
 def setup_logging(level: str | None = None) -> None:
     log_level = (level or settings.log_level).upper()
-
-    # Ensure log directory exists
     Path(settings.logs_dir).mkdir(parents=True, exist_ok=True)
 
     root = logging.getLogger()
     root.setLevel(log_level)
 
-    # Clear existing handlers to avoid duplicate logs on reload
+    # uvicorn --reload calls this again in the same process.
     for h in list(root.handlers):
         root.removeHandler(h)
 
-    console = logging.StreamHandler()
-    console.setLevel(log_level)
-    console.setFormatter(ORJSONFormatter())
+    formatter = ORJSONFormatter()
+    for handler in (logging.StreamHandler(), logging.FileHandler(Path(settings.logs_dir) / "app.log")):
+        handler.setLevel(log_level)
+        handler.setFormatter(formatter)
+        root.addHandler(handler)
 
-    file_handler = logging.FileHandler(Path(settings.logs_dir) / "app.log")
-    file_handler.setLevel(log_level)
-    file_handler.setFormatter(ORJSONFormatter())
-
-    root.addHandler(console)
-    root.addHandler(file_handler)
-
-    # Reduce noise from libraries
     logging.getLogger("httpx").setLevel(logging.WARNING)
     logging.getLogger("apscheduler").setLevel(logging.INFO)

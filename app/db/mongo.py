@@ -15,7 +15,7 @@ _client: Optional[AsyncIOMotorClient] = None
 async def get_client() -> AsyncIOMotorClient:
     global _client
     if _client is None:
-        logger.info("Creating MongoDB client", extra={"uri": settings.mongodb_uri})
+        logger.info("Creating MongoDB client", extra={"database": settings.mongodb_db})
         _client = AsyncIOMotorClient(settings.mongodb_uri)
     return _client
 
