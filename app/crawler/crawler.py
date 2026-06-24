@@ -5,7 +5,7 @@ import logging
 from typing import Dict, List, Tuple
 
 import httpx
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.asynchronous.database import AsyncDatabase
 
 from app.analysis.significance import classify
 from app.config.settings import settings
@@ -64,7 +64,7 @@ def _change(upc: str, change_type: str, diffs: List[FieldDiff], now) -> dict:
 
 
 async def _process_book(
-    url: str, db: AsyncIOMotorDatabase, sem: asyncio.Semaphore, client: httpx.AsyncClient
+    url: str, db: AsyncDatabase, sem: asyncio.Semaphore, client: httpx.AsyncClient
 ) -> Tuple[str, str]:
     async with sem:
         html = await fetch_text(url, client=client)
@@ -125,7 +125,7 @@ def _tally(summary: Dict[str, int], results: List[object]) -> None:
         summary[status if status in summary else "failed"] += 1
 
 
-async def run_full_crawl(db: AsyncIOMotorDatabase) -> dict:
+async def run_full_crawl(db: AsyncDatabase) -> dict:
     # One client for the whole crawl, so connections to the site are pooled
     # instead of a new TLS handshake for each of the thousand book pages.
     async with get_http_client() as client:

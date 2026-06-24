@@ -4,15 +4,15 @@ import os
 from datetime import timedelta
 from typing import Optional
 
-from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
+from pymongo.asynchronous.database import AsyncDatabase
 from pymongo.errors import DuplicateKeyError
 
 from app.utils.time import now_utc
 
 
 async def acquire_lock(
-    db: AsyncIOMotorDatabase,
+    db: AsyncDatabase,
     name: str,
     owner: Optional[str] = None,
     ttl_seconds: int = 6 * 3600,
@@ -65,7 +65,7 @@ async def acquire_lock(
         return False
 
 
-async def release_lock(db: AsyncIOMotorDatabase, name: str, owner: Optional[str] = None) -> None:
+async def release_lock(db: AsyncDatabase, name: str, owner: Optional[str] = None) -> None:
     owner = owner or f"pid:{os.getpid()}"
     await db["locks"].update_one(
         {"_id": name, "owner": owner},

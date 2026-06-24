@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.asynchronous.database import AsyncDatabase
 
 from app.analysis.significance import SEVERITY_ORDER
 from app.api.deps import DBDep, rate_limit_dep
@@ -24,7 +24,7 @@ router = APIRouter(
     description="View recent updates (e.g., new books added, updates detected) ordered by most recent first.",
 )
 async def list_changes(
-    db: AsyncIOMotorDatabase = DBDep,
+    db: AsyncDatabase = DBDep,
     since: Optional[str] = Query(
         default=None, description="Only return changes at or after this timestamp (ISO 8601)."
     ),
@@ -69,7 +69,7 @@ async def list_changes(
         # Severity is a word, and Mongo would sort it alphabetically —
         # "cosmetic" before "critical", which is exactly backwards. Project a
         # numeric rank and sort on that.
-        cursor = db["changes"].aggregate(
+        cursor = await db["changes"].aggregate(
             [
                 {"$match": q},
                 {

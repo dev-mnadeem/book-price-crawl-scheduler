@@ -6,7 +6,7 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import JSONResponse
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.asynchronous.database import AsyncDatabase
 
 from app.api.deps import DBDep, rate_limit_dep
 from app.models.book import BookPublic, PaginatedBooks
@@ -26,7 +26,7 @@ router = APIRouter(
     description="Browse the catalog filtered by category, price range and rating, with sorting and pagination.",
 )
 async def list_books(
-    db: AsyncIOMotorDatabase = DBDep,
+    db: AsyncDatabase = DBDep,
     category: Optional[str] = Query(default=None, description="Filter by category name."),
     min_price: Optional[float] = Query(default=None, ge=0, description="Minimum price_incl_tax."),
     max_price: Optional[float] = Query(default=None, ge=0, description="Maximum price_incl_tax."),
@@ -81,7 +81,7 @@ async def list_books(
 )
 async def get_book(
     book_id: str,
-    db: AsyncIOMotorDatabase = DBDep,
+    db: AsyncDatabase = DBDep,
     include_raw: bool = Query(default=False, description="Include raw_html and content_hash in the response."),
 ):
     projection = {"_id": 0}

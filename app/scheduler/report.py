@@ -5,13 +5,13 @@ from pathlib import Path
 from typing import Optional
 
 import orjson
-from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.asynchronous.database import AsyncDatabase
 
 from app.config.settings import settings
 from app.utils.time import now_utc
 
 
-async def generate_daily_report(db: AsyncIOMotorDatabase, since: Optional[datetime] = None) -> Path:
+async def generate_daily_report(db: AsyncDatabase, since: Optional[datetime] = None) -> Path:
     ts = now_utc()
     start_of_day = datetime(ts.year, ts.month, ts.day, tzinfo=timezone.utc)
     since = since or start_of_day
