@@ -140,8 +140,17 @@ async def _process_book(url: str, db: AsyncIOMotorDatabase, sem: asyncio.Semapho
             await client.aclose()
 
 
+def _tally(summary: Dict[str, int], results: List[object]) -> None:
+    for r in results:
+        if isinstance(r, Exception):
+            logger.error("Detail processing failed", exc_info=r)
+            summary["failed"] += 1
+            continue
+        _, status = r
+        summary[status if status in summary else "failed"] += 1
+
+
 async def run_full_crawl(db: AsyncIOMotorDatabase) -> dict:
-    # Fetch categories
     client = get_http_client()
     try:
         root_html = await fetch_text(settings.base_url, client=client)
@@ -151,63 +160,36 @@ async def run_full_crawl(db: AsyncIOMotorDatabase) -> dict:
 
     logger.info("Discovered categories", extra={"count": len(category_urls)})
 
-    # Initialize or load crawl state (resume support at category granularity)
+    # The cursor is only advanced once a category's books are stored, so an
+    # interrupted crawl resumes at the first category it had not finished.
     state = await db["crawl_state"].find_one({"name": "full_crawl"})
     start_idx = int(state.get("category_index", 0)) if state else 0
     now = now_utc()
-    await db["crawl_state"].update_one(
-        {"name": "full_crawl"},
-        {
-            "$set": {
-                "name": "full_crawl",
-                "status": "running",
-                "category_index": start_idx,
-                "updated_at": now,
-                "started_at": state.get("started_at", now) if state else now,
-            }
-        },
-        upsert=True,
-    )
+    state_fields = {"name": "full_crawl", "status": "running", "category_index": start_idx, "updated_at": now}
+    if start_idx == 0 or not state:
+        state_fields["started_at"] = now
+    await db["crawl_state"].update_one({"name": "full_crawl"}, {"$set": state_fields}, upsert=True)
 
-    # Collect all detail urls per category
-    all_detail_urls: List[str] = []
-    for idx, cat in enumerate(category_urls):
-        if idx < start_idx:
-            continue
-        urls = await _gather_all_detail_urls(cat)
-        logger.info("Category URLs gathered", extra={"category": cat, "books": len(urls), "index": idx})
-        all_detail_urls.extend(urls)
-        # Update state after completing a category
+    sem = asyncio.Semaphore(settings.concurrency)
+    summary = {"inserted": 0, "updated": 0, "unchanged": 0, "failed": 0}
+    seen_urls: set[str] = set()
+    for idx in range(start_idx, len(category_urls)):
+        category_url = category_urls[idx]
+        urls = [u for u in await _gather_all_detail_urls(category_url) if u not in seen_urls]
+        seen_urls.update(urls)
+        logger.info("Category URLs gathered", extra={"category": category_url, "books": len(urls), "index": idx})
+
+        results = await asyncio.gather(*(_process_book(u, db, sem) for u in urls), return_exceptions=True)
+        _tally(summary, results)
+
         await db["crawl_state"].update_one(
             {"name": "full_crawl"},
             {"$set": {"category_index": idx + 1, "updated_at": now_utc()}},
-            upsert=True,
         )
 
-    # Dedup
-    all_detail_urls = list(dict.fromkeys(all_detail_urls))
-
-    # Process details concurrently
-    sem = asyncio.Semaphore(settings.concurrency)
-    results = await asyncio.gather(*[ _process_book(u, db, sem) for u in all_detail_urls ], return_exceptions=True)
-
-    summary = {"inserted": 0, "updated": 0, "unchanged": 0, "failed": 0}
-    for r in results:
-        if isinstance(r, Exception):
-            logger.exception("Detail processing failed", exc_info=r)
-            summary["failed"] += 1
-        else:
-            _, status = r
-            if status in summary:
-                summary[status] += 1
-            else:
-                summary["failed"] += 1
-
-    # Mark crawl completion
     await db["crawl_state"].update_one(
         {"name": "full_crawl"},
         {"$set": {"status": "completed", "finished_at": now_utc(), "category_index": 0}},
-        upsert=True,
     )
 
     logger.info("Crawl completed", extra=summary)

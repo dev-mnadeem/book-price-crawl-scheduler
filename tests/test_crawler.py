@@ -114,3 +114,66 @@ async def test_crawl_insert_update_and_resume(fake_db, monkeypatch):
     # Only Fiction category processed; existing doc unchanged, so zero inserts/updates
     assert summary3["inserted"] == 0
     assert summary3["updated"] == 0
+
+
+@pytest.mark.asyncio
+async def test_an_interrupted_crawl_keeps_finished_categories_and_resumes(fake_db, monkeypatch):
+    monkeypatch.setattr(cfg, "base_url", "http://site/")
+    mapping = {
+        "http://site/": html_root(),
+        "http://site/cat/travel/index.html": html_listing_travel(1),
+        "http://site/cat/travel/page-2.html": html_listing_travel(2),
+        "http://site/book/b1.html": detail_page("UPC-B1", "Book 1", "Travel", 10.00, 9.00, 10, 4, 2),
+        "http://site/book/b2.html": detail_page("UPC-B2", "Book 2", "Travel", 5.00, 4.50, 5, 2, 1),
+        "http://site/book/f1.html": detail_page("UPC-F1", "Book F1", "Fiction", 7.00, 6.50, 3, 5, 4),
+    }
+
+    async def fake_fetch_text(url: str, client=None, max_retries=None) -> str:
+        if url not in mapping:
+            raise RuntimeError(f"site went away at {url}")
+        return mapping[url]
+
+    monkeypatch.setattr(crawler_mod, "fetch_text", fake_fetch_text, raising=False)
+
+    # The Fiction listing is unreachable, so the crawl dies after Travel.
+    with pytest.raises(RuntimeError):
+        await run_full_crawl(fake_db)
+
+    assert await fake_db["books"].count_documents({}) == 2
+    state = await fake_db["crawl_state"].find_one({"name": "full_crawl"})
+    assert state["status"] == "running"
+    assert state["category_index"] == 1
+
+    mapping["http://site/cat/fiction/index.html"] = html_listing_fiction()
+    resumed = await run_full_crawl(fake_db)
+    assert resumed == {"inserted": 1, "updated": 0, "unchanged": 0, "failed": 0}
+    state = await fake_db["crawl_state"].find_one({"name": "full_crawl"})
+    assert state["status"] == "completed"
+    assert state["category_index"] == 0
+
+
+@pytest.mark.asyncio
+async def test_a_price_change_is_logged_with_its_severity(fake_db, monkeypatch):
+    monkeypatch.setattr(cfg, "base_url", "http://site/")
+    mapping = {
+        "http://site/": html_root(),
+        "http://site/cat/travel/index.html": html_listing_travel(2),
+        "http://site/cat/fiction/index.html": html_listing_fiction(),
+        "http://site/book/b1.html": detail_page("UPC-B1", "Book 1", "Travel", 20.00, 20.00, 10, 4, 2),
+        "http://site/book/b2.html": detail_page("UPC-B2", "Book 2", "Travel", 5.00, 4.50, 5, 2, 1),
+        "http://site/book/f1.html": detail_page("UPC-F1", "Book F1", "Fiction", 7.00, 6.50, 3, 5, 4),
+    }
+
+    async def fake_fetch_text(url: str, client=None, max_retries=None) -> str:
+        return mapping[url]
+
+    monkeypatch.setattr(crawler_mod, "fetch_text", fake_fetch_text, raising=False)
+    await run_full_crawl(fake_db)
+
+    mapping["http://site/book/b1.html"] = detail_page("UPC-B1", "Book 1", "Travel", 12.00, 12.00, 10, 4, 2)
+    assert (await run_full_crawl(fake_db))["updated"] == 1
+
+    change = await fake_db["changes"].find_one({"book_upc": "UPC-B1", "change_type": "update"})
+    assert change["severity"] == "critical"
+    assert {d["field"] for d in change["changes"]} == {"price_incl_tax", "price_excl_tax"}
+    assert change["signals"]["price_change_pct"] == -40.0
