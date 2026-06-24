@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import os
-from datetime import datetime, timedelta
+from datetime import timedelta
 from typing import Optional
 
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
+
+from app.utils.time import now_utc
 
 
 async def acquire_lock(
@@ -19,11 +21,10 @@ async def acquire_lock(
 
     Uses an atomic findOneAndUpdate pattern with an expiry window.
     """
-    now = datetime.utcnow()
+    now = now_utc()
     owner = owner or f"pid:{os.getpid()}"
     expires_at = now + timedelta(seconds=ttl_seconds)
 
-    # Filters and update doc
     lock_filter_available = {"_id": name, "$or": [{"locked": False}, {"expires_at": {"$lt": now}}]}
     update_doc = {
         "$set": {
