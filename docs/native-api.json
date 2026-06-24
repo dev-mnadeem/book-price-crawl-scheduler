@@ -1,0 +1,74 @@
+{
+  "mode": "Real disposable MongoDB, one synthetic book, scheduler disabled, no external crawl",
+  "exchanges": [
+    {
+      "request": "GET /books",
+      "status": 401,
+      "response": {
+        "detail": "Invalid or missing API key"
+      }
+    },
+    {
+      "request": "GET /health",
+      "status": 200,
+      "response": {
+        "status": "ok"
+      }
+    },
+    {
+      "request": "GET /books?category=travel&sort_by=price&order=asc",
+      "status": 200,
+      "response": {
+        "total": 1,
+        "page": 1,
+        "page_size": 20,
+        "items": [
+          {
+            "upc": "FIXTURE-001",
+            "name": "Synthetic demonstration book",
+            "description": null,
+            "category": "Travel",
+            "category_norm": "travel",
+            "price_excl_tax": null,
+            "price_incl_tax": 12.5,
+            "availability": 0,
+            "num_reviews": 0,
+            "image_url": null,
+            "rating": 4,
+            "source_url": "https://example.com/synthetic-book",
+            "in_stock": null,
+            "currency": null
+          }
+        ]
+      }
+    },
+    {
+      "request": "GET /books/FIXTURE-001",
+      "status": 200,
+      "response": {
+        "upc": "FIXTURE-001",
+        "name": "Synthetic demonstration book",
+        "description": null,
+        "category": "Travel",
+        "category_norm": "travel",
+        "price_excl_tax": null,
+        "price_incl_tax": 12.5,
+        "availability": 0,
+        "num_reviews": 0,
+        "image_url": null,
+        "rating": 4,
+        "source_url": "https://example.com/synthetic-book",
+        "in_stock": null,
+        "currency": null
+      }
+    },
+    {
+      "request": "GET /changes?min_severity=notable",
+      "status": 200,
+      "response": {
+        "items": [],
+        "count": 0
+      }
+    }
+  ]
+}

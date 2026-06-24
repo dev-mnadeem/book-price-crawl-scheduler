@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+project_venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+coverage/
+htmlcov/
+
+# Runtime output
+logs/
+*.log
+reports/
+tmp/
+
+# Node (README preview tooling)
+node_modules/
+
+# Local configuration
+.env
+.env.*
+!.env.example
+
+# Editors and OS
+.DS_Store
+.idea/
+.vscode/
+
+# GitHub automation is not part of this project
+.github/
+
+README.preview.html
