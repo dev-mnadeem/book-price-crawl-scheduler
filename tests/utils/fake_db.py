@@ -72,12 +72,10 @@ class FakeCursor:
         self._projection = projection
         self._skip = 0
         self._limit = None
-        self._sort_field = None
-        self._sort_dir = 1
+        self._sort_keys: List[tuple[str, int]] = []
 
-    def sort(self, field: str, direction: int) -> "FakeCursor":
-        self._sort_field = field
-        self._sort_dir = direction
+    def sort(self, key: str | List[tuple[str, int]], direction: int = 1) -> "FakeCursor":
+        self._sort_keys = list(key) if isinstance(key, list) else [(key, direction)]
         return self
 
     def skip(self, n: int) -> "FakeCursor":
@@ -90,8 +88,10 @@ class FakeCursor:
 
     def _iter(self) -> Iterable[Dict[str, Any]]:
         items = list(self._docs)
-        if self._sort_field:
-            items.sort(key=lambda d: (d.get(self._sort_field),), reverse=self._sort_dir == -1)
+        # Stable sorts applied from the last key to the first give Mongo's
+        # compound ordering.
+        for field, direction in reversed(self._sort_keys):
+            items.sort(key=lambda d: d.get(field), reverse=direction == -1)
         if self._skip:
             items = items[self._skip :]
         if self._limit is not None:

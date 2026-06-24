@@ -41,3 +41,20 @@ def test_list_changes_basic_and_filters(client, api_key, fake_db, event_loop):
     data3 = r3.json()
     # since ~1.5h ago => should include last two
     assert data3["count"] == 2
+
+
+def test_an_unparseable_since_is_rejected(client, api_key):
+    r = client.get("/changes?since=yesterday", headers={"X-API-Key": api_key})
+    assert r.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert "since" in r.json()["detail"]
+
+
+def test_a_naive_since_is_read_as_utc(client, api_key, fake_db, event_loop):
+    now = datetime.now(timezone.utc)
+    _insert(event_loop, fake_db, {"book_upc": "OLD", "change_type": "new", "changes": [], "timestamp": now - timedelta(days=2)})
+    _insert(event_loop, fake_db, {"book_upc": "NEW", "change_type": "new", "changes": [], "timestamp": now})
+
+    naive = (now - timedelta(days=1)).replace(tzinfo=None).isoformat()
+    r = client.get(f"/changes?since={naive}", headers={"X-API-Key": api_key})
+    assert r.status_code == 200
+    assert [item["book_upc"] for item in r.json()["items"]] == ["NEW"]

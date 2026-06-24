@@ -84,3 +84,24 @@ def test_get_book_by_id(client, api_key, fake_db, event_loop):
     assert r2.status_code == 200
     data2 = r2.json()
     assert "raw_html" in data2
+
+
+def test_pages_do_not_overlap_when_sort_values_tie(client, api_key, fake_db, event_loop):
+    # Inserted out of UPC order, all with the same rating.
+    for upc in ("T3", "T1", "T4", "T2"):
+        _insert(event_loop, fake_db, {
+            "upc": upc,
+            "name": f"Tied {upc}",
+            "category": "Poetry",
+            "category_norm": "poetry",
+            "price_incl_tax": 10.0,
+            "rating": 3,
+            "source_url": f"http://x/{upc}",
+        })
+
+    headers = {"X-API-Key": api_key}
+    seen = []
+    for page in (1, 2):
+        r = client.get(f"/books?category=poetry&sort_by=rating&page={page}&page_size=2", headers=headers)
+        seen += [item["upc"] for item in r.json()["items"]]
+    assert seen == ["T1", "T2", "T3", "T4"]

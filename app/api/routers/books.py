@@ -66,7 +66,9 @@ async def list_books(
     total = await db["books"].count_documents(q)
     cursor = (
         db["books"].find(q, projection={"_id": 0, "raw_html": 0, "content_hash": 0})
-        .sort(field, direction)
+        # upc breaks ties so that books sharing a rating or price keep a fixed
+        # order between pages instead of reshuffling across skip/limit calls.
+        .sort([(field, direction), ("upc", 1)])
         .skip((page - 1) * page_size)
         .limit(page_size)
     )

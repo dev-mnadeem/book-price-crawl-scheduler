@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Literal, Optional
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.api.deps import DBDep, rate_limit_dep
@@ -50,9 +50,11 @@ async def list_changes(
             s = s[:-1] + "+00:00"
         try:
             dt = datetime.fromisoformat(s)
-            q["timestamp"] = {"$gte": dt}
         except ValueError:
-            pass
+            raise HTTPException(status_code=422, detail="'since' must be an ISO 8601 timestamp") from None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        q["timestamp"] = {"$gte": dt}
     if type is not None:
         q["change_type"] = type
     if severity is not None:
