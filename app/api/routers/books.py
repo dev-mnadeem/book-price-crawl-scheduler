@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-from typing import Optional, Literal
 import re
+from typing import Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from fastapi.responses import ORJSONResponse
+from fastapi.encoders import jsonable_encoder
+from fastapi.responses import JSONResponse
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.api.deps import DBDep, rate_limit_dep
-from app.utils.auth import api_key_auth
 from app.models.book import BookPublic, PaginatedBooks
 from app.utils.text import normalize_category
 
 router = APIRouter(
     prefix="/books",
     tags=["books"],
-    dependencies=[Depends(api_key_auth), Depends(rate_limit_dep)],
+    dependencies=[Depends(rate_limit_dep)],
 )
 
 
@@ -44,23 +44,17 @@ async def list_books(
             {"category_norm": norm},
             {"category": {"$regex": f"^{re.escape(category)}$", "$options": "i"}},
         ]
-    price_field = "price_incl_tax"
     price_cond: dict = {}
     if min_price is not None:
         price_cond["$gte"] = float(min_price)
     if max_price is not None:
         price_cond["$lte"] = float(max_price)
     if price_cond:
-        q[price_field] = price_cond
+        q["price_incl_tax"] = price_cond
     if rating is not None:
         q["rating"] = int(rating)
 
-    sort_field_map = {
-        "rating": ("rating", -1),
-        "price": ("price_incl_tax", 1),
-        "reviews": ("num_reviews", -1),
-    }
-    field, _ = sort_field_map.get(sort_by, ("rating", -1))
+    field = {"rating": "rating", "price": "price_incl_tax", "reviews": "num_reviews"}[sort_by]
     direction = 1 if order == "asc" else -1
 
     total = await db["books"].count_documents(q)
@@ -94,5 +88,5 @@ async def get_book(
     if not doc:
         raise HTTPException(status_code=404, detail="Book not found")
     if include_raw:
-        return ORJSONResponse(content=doc)
+        return JSONResponse(content=jsonable_encoder(doc))
     return BookPublic(**doc)

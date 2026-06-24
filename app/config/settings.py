@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import List, Optional
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -19,7 +18,7 @@ class Settings(BaseSettings):
     max_retries: int = 3
     user_agent: str = "BooksMonitorBot/1.0 (+https://example.com/bot)"
 
-    # API (as plain string from env, e.g., "key1,key2" or JSON array)
+    # Comma separated ("key1,key2") or a JSON array
     api_keys: str = "dev-key-1"
     rate_limit_per_hour: int = 100
 
@@ -35,9 +34,6 @@ class Settings(BaseSettings):
 
     # Reports
     report_dir: str = "reports"
-
-    # Redis
-    redis_url: Optional[str] = None
 
     model_config = SettingsConfigDict(
         env_file=".env",
@@ -55,17 +51,9 @@ class Settings(BaseSettings):
                 parsed = json.loads(s)
                 if isinstance(parsed, list):
                     return [str(x).strip() for x in parsed if str(x).strip()]
-            except Exception:
+            except json.JSONDecodeError:
                 pass
         return [p.strip() for p in s.split(",") if p.strip()]
-
-    @property
-    def logs_path(self) -> Path:
-        return Path(self.logs_dir)
-
-    @property
-    def reports_path(self) -> Path:
-        return Path(self.report_dir)
 
 
 settings = Settings()

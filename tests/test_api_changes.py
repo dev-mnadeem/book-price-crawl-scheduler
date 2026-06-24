@@ -45,7 +45,7 @@ def test_list_changes_basic_and_filters(client, api_key, fake_db, event_loop):
 
 def test_an_unparseable_since_is_rejected(client, api_key):
     r = client.get("/changes?since=yesterday", headers={"X-API-Key": api_key})
-    assert r.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+    assert r.status_code == 422
     assert "since" in r.json()["detail"]
 
 

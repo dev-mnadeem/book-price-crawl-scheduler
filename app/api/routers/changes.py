@@ -7,14 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.api.deps import DBDep, rate_limit_dep
-from app.utils.auth import api_key_auth
 from app.analysis.significance import SEVERITY_ORDER
 from app.models.change import ChangesResponse
 
 router = APIRouter(
     prefix="/changes",
     tags=["changes"],
-    dependencies=[Depends(api_key_auth), Depends(rate_limit_dep)],
+    dependencies=[Depends(rate_limit_dep)],
 )
 
 

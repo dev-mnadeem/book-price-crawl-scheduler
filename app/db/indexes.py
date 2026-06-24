@@ -12,7 +12,6 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     changes = db["changes"]
     locks = db["locks"]
 
-    # Books indexes
     await books.create_index("upc", unique=True)
     await books.create_index("source_url", unique=True)
     await books.create_index("category")
@@ -22,34 +21,18 @@ async def ensure_indexes(db: AsyncIOMotorDatabase) -> None:
     await books.create_index("last_seen")
     await books.create_index([("category", 1), ("price_incl_tax", 1), ("rating", -1)])
     await books.create_index([("category_norm", 1), ("price_incl_tax", 1), ("rating", -1)])
-    # hashed index on content_hash for quick change lookups
-    await books.create_index([("content_hash", "hashed")])
 
-    # Changes indexes
     await changes.create_index("book_upc")
     await changes.create_index([("timestamp", -1)])
     await changes.create_index("change_type")
+    await changes.create_index([("severity", 1), ("timestamp", -1)])
 
     logger.info("MongoDB indexes ensured")
 
-    # Backfill category_norm
-    try:
-        await books.update_many(
-            {"$or": [{"category_norm": {"$exists": False}}, {"category_norm": None}]},
-            [
-                {
-                    "$set": {
-                        "category_norm": {"$toLower": {"$ifNull": ["$category", None]}},
-                    }
-                }
-            ],
-        )
-    except Exception:
-        pass
+    # Documents written before category_norm existed.
+    await books.update_many(
+        {"category_norm": None, "category": {"$type": "string"}},
+        [{"$set": {"category_norm": {"$toLower": "$category"}}}],
+    )
 
-    # Locks TTL index
-    try:
-        await locks.create_index("expires_at", expireAfterSeconds=0)
-    except Exception:
-        # ignore if fails
-        pass
+    await locks.create_index("expires_at", expireAfterSeconds=0)

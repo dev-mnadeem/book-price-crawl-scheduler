@@ -16,7 +16,8 @@ async def get_client() -> AsyncIOMotorClient:
     global _client
     if _client is None:
         logger.info("Creating MongoDB client", extra={"database": settings.mongodb_db})
-        _client = AsyncIOMotorClient(settings.mongodb_uri)
+        # tz_aware so timestamps come back as UTC rather than naive datetimes.
+        _client = AsyncIOMotorClient(settings.mongodb_uri, tz_aware=True)
     return _client
 
 
