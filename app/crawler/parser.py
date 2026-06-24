@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from urllib.parse import urljoin
 
 RATING_MAP = {"One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5}
+PRICE_RE = re.compile(r"\d[\d,]*(?:\.\d+)?")
 
 
 def parse_category_links(html: str, base_url: str) -> List[str]:
@@ -33,6 +34,13 @@ def parse_listing_page(html: str, base_url: str) -> Tuple[List[str], Optional[st
     next_a = soup.select_one("li.next a")
     next_url = urljoin(base_url, next_a.get("href")) if next_a and next_a.get("href") else None
     return detail_links, next_url
+
+
+def parse_price(text: Optional[str]) -> Optional[float]:
+    # Matching the number rather than stripping "£" also copes with the
+    # "Â£" that appears when a page's UTF-8 is decoded as Latin-1.
+    m = PRICE_RE.search(text or "")
+    return float(m.group(0).replace(",", "")) if m else None
 
 
 def _parse_table(soup: BeautifulSoup) -> dict:
@@ -69,15 +77,9 @@ def parse_book_detail(html: str, page_url: str, base_url: str) -> dict:
         if p:
             description = p.text.strip()
 
-    # Category from breadcrumb: Books > Category > Title
-    category = None
+    # Breadcrumb links are Home > Books > Category; the title is plain text.
     crumbs = soup.select("ul.breadcrumb li a")
-    if len(crumbs) >= 2:
-        # crumbs[0] = Home, crumbs[1] = Books, crumbs[2] = Category
-        # On detail page, there are usually: Home, Books, Category, Title
-        category = crumbs[-1].text.strip() if len(crumbs) >= 3 else None
-        if len(crumbs) >= 3:
-            category = crumbs[-1].text.strip()
+    category = crumbs[-1].text.strip() if len(crumbs) >= 3 else None
 
     # Table fields
     table = _parse_table(soup)
@@ -86,20 +88,12 @@ def parse_book_detail(html: str, page_url: str, base_url: str) -> dict:
     price_excl = table.get("Price (excl. tax)")
     num_reviews = table.get("Number of reviews")
 
-    def parse_price(s: Optional[str]) -> Optional[float]:
-        if not s:
-            return None
-        s = s.replace("£", "").strip()
-        try:
-            return float(s)
-        except ValueError:
-            return None
-
     price_incl_tax = parse_price(price_incl)
     price_excl_tax = parse_price(price_excl)
 
     # Availability: e.g. "In stock (22 available)"
-    availability_text = soup.select_one("p.availability").text if soup.select_one("p.availability") else ""
+    availability_el = soup.select_one("p.availability")
+    availability_text = availability_el.text if availability_el else ""
     m = re.search(r"(\d+)", availability_text)
     availability = int(m.group(1)) if m else 0
 
@@ -114,7 +108,6 @@ def parse_book_detail(html: str, page_url: str, base_url: str) -> dict:
     )
     src = img_el.get("src") if img_el else None
     if not src:
-        # fallback
         for img in soup.select("img[src]"):
             s = img.get("src")
             if s and "/media/" in s:
