@@ -23,12 +23,17 @@ def _default_headers() -> dict[str, str]:
 
 def get_http_client() -> httpx.AsyncClient:
     timeout = httpx.Timeout(settings.request_timeout)
-    client = httpx.AsyncClient(timeout=timeout, headers=_default_headers(), follow_redirects=True)
-    return client
+    return httpx.AsyncClient(timeout=timeout, headers=_default_headers(), follow_redirects=True)
+
+
+def _is_retryable_status(status: int) -> bool:
+    return status == 429 or status >= 500
 
 
 async def fetch_text(url: str, client: Optional[httpx.AsyncClient] = None, *, max_retries: Optional[int] = None) -> str:
     retries = max_retries if max_retries is not None else settings.max_retries
+    if retries < 0:
+        raise ValueError("max_retries must be zero or more")
     own_client = False
     if client is None:
         client = get_http_client()
@@ -38,17 +43,19 @@ async def fetch_text(url: str, client: Optional[httpx.AsyncClient] = None, *, ma
         for attempt in range(retries + 1):
             try:
                 resp = await client.get(url)
-                status = resp.status_code
-                if status >= 500 or status == 429:
-                    raise httpx.HTTPStatusError("server error", request=resp.request, response=resp)
                 resp.raise_for_status()
                 return resp.text
-            except (httpx.ConnectError, httpx.ReadTimeout, httpx.HTTPStatusError) as e:
+            except httpx.HTTPStatusError as e:
+                # A 404 or 403 will not fix itself on the next attempt; only
+                # throttling and server-side failures are worth waiting out.
+                if not _is_retryable_status(e.response.status_code) or attempt >= retries:
+                    logger.warning("HTTP request failed", extra={"url": url, "status": e.response.status_code})
+                    raise
+            except httpx.TransportError as e:
                 if attempt >= retries:
                     logger.warning("HTTP request failed after retries", extra={"url": url, "error": str(e)})
                     raise
-                delay = min(2 ** attempt + random.random(), 10.0)
-                await asyncio.sleep(delay)
+            await asyncio.sleep(min(2**attempt + random.random(), 10.0))
     finally:
         if own_client:
             await client.aclose()
