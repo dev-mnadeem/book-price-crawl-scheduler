@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import re
 from typing import List, Optional, Tuple
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
 
 RATING_MAP = {"One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5}
 PRICE_RE = re.compile(r"\d[\d,]*(?:\.\d+)?")

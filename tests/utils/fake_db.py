@@ -1,13 +1,11 @@
 from __future__ import annotations
 
-import asyncio
 import re
 from copy import deepcopy
-from datetime import datetime
 from typing import Any, Dict, Iterable, List, Optional
 
-from pymongo.errors import DuplicateKeyError
 from pymongo import ReturnDocument
+from pymongo.errors import DuplicateKeyError
 
 
 class FakeInsertOneResult:
@@ -107,7 +105,7 @@ class FakeCursor:
         try:
             return next(self._iter_it)
         except StopIteration:
-            raise StopAsyncIteration
+            raise StopAsyncIteration from None
 
 
 class FakeCollection:
@@ -128,7 +126,9 @@ class FakeCollection:
         self._docs.append(deepcopy(doc))
         return FakeInsertOneResult()
 
-    async def find_one(self, flt: Dict[str, Any], projection: Optional[Dict[str, int]] = None) -> Optional[Dict[str, Any]]:
+    async def find_one(
+        self, flt: Dict[str, Any], projection: Optional[Dict[str, int]] = None
+    ) -> Optional[Dict[str, Any]]:
         for d in self._docs:
             if _matches_filter(d, flt):
                 return _apply_projection(d, projection)

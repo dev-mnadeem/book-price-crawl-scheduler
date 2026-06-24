@@ -47,11 +47,10 @@ async def test_v1_then_v2_produces_one_change_of_each_kind(fake_db, serve_demo_s
 
     assert by_book["demo000000000101"]["severity"] == "critical"  # price -30%
     assert by_book["demo000000000102"]["severity"] == "critical"  # sold out
-    assert by_book["demo000000000201"]["severity"] == "notable"   # 15 -> 3 in stock
-    assert by_book["demo000000000104"]["severity"] == "minor"     # price -2.5%
-    assert by_book["demo000000000301"]["severity"] == "minor"     # rating and reviews
+    assert by_book["demo000000000201"]["severity"] == "notable"  # 15 -> 3 in stock
+    assert by_book["demo000000000104"]["severity"] == "minor"  # price -2.5%
+    assert by_book["demo000000000301"]["severity"] == "minor"  # rating and reviews
     assert by_book["demo000000000202"]["severity"] == "cosmetic"  # description wording
 
     new_titles = [c["book_upc"] for c in changes if c["change_type"] == "new"]
     assert "demo000000000105" in new_titles
-

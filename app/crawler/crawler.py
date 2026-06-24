@@ -95,7 +95,14 @@ async def _process_book(
     if content_hash(existing) == new_hash:
         await db["books"].update_one(
             {"_id": existing["_id"]},
-            {"$set": {**seen, "last_status": "unchanged", "category_norm": parsed["category_norm"], "content_hash": new_hash}},
+            {
+                "$set": {
+                    **seen,
+                    "last_status": "unchanged",
+                    "category_norm": parsed["category_norm"],
+                    "content_hash": new_hash,
+                }
+            },
         )
         return url, "unchanged"
 

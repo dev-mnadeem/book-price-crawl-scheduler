@@ -9,12 +9,12 @@ import orjson
 from app.config.logging import setup_logging
 from app.config.settings import settings
 from app.crawler.parser import (
+    parse_book_detail,
     parse_category_links,
     parse_listing_page,
-    parse_book_detail,
 )
 from app.utils.hashing import content_hash
-from app.utils.http_client import get_http_client, fetch_text
+from app.utils.http_client import fetch_text, get_http_client
 
 logger = logging.getLogger(__name__)
 

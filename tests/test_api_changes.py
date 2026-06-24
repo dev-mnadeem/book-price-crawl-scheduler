@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+
 from fastapi import status
 
 
@@ -35,7 +36,7 @@ def test_list_changes_basic_and_filters(client, api_key, fake_db, event_loop):
     assert all(item["change_type"] == "update" for item in data2["items"])
 
     # Filter by since (should exclude the oldest one)
-    since_iso = (now - timedelta(hours=90/60)).isoformat()
+    since_iso = (now - timedelta(hours=90 / 60)).isoformat()
     r3 = client.get(f"/changes?since={since_iso}", headers=headers)
     assert r3.status_code == 200
     data3 = r3.json()
@@ -51,7 +52,11 @@ def test_an_unparseable_since_is_rejected(client, api_key):
 
 def test_a_naive_since_is_read_as_utc(client, api_key, fake_db, event_loop):
     now = datetime.now(timezone.utc)
-    _insert(event_loop, fake_db, {"book_upc": "OLD", "change_type": "new", "changes": [], "timestamp": now - timedelta(days=2)})
+    _insert(
+        event_loop,
+        fake_db,
+        {"book_upc": "OLD", "change_type": "new", "changes": [], "timestamp": now - timedelta(days=2)},
+    )
     _insert(event_loop, fake_db, {"book_upc": "NEW", "change_type": "new", "changes": [], "timestamp": now})
 
     naive = (now - timedelta(days=1)).replace(tzinfo=None).isoformat()

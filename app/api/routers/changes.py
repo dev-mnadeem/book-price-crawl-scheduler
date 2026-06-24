@@ -6,8 +6,8 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
-from app.api.deps import DBDep, rate_limit_dep
 from app.analysis.significance import SEVERITY_ORDER
+from app.api.deps import DBDep, rate_limit_dep
 from app.models.change import ChangesResponse
 
 router = APIRouter(
@@ -25,7 +25,9 @@ router = APIRouter(
 )
 async def list_changes(
     db: AsyncIOMotorDatabase = DBDep,
-    since: Optional[str] = Query(default=None, description="Only return changes at or after this timestamp (ISO 8601)."),
+    since: Optional[str] = Query(
+        default=None, description="Only return changes at or after this timestamp (ISO 8601)."
+    ),
     type: Optional[Literal["new", "update"]] = Query(default=None, alias="type", description="Filter by change type."),
     severity: Optional[Literal["critical", "notable", "minor", "cosmetic"]] = Query(
         default=None,
@@ -67,26 +69,29 @@ async def list_changes(
         # Severity is a word, and Mongo would sort it alphabetically —
         # "cosmetic" before "critical", which is exactly backwards. Project a
         # numeric rank and sort on that.
-        cursor = db["changes"].aggregate([
-            {"$match": q},
-            {"$addFields": {"severity_rank": {"$switch": {
-                "branches": [
-                    {"case": {"$eq": ["$severity", name]}, "then": rank}
-                    for name, rank in SEVERITY_ORDER.items()
-                ],
-                "default": 9,
-            }}}},
-            {"$sort": {"severity_rank": 1, "timestamp": -1}},
-            {"$skip": offset},
-            {"$limit": limit},
-            {"$project": {"_id": 0, "severity_rank": 0}},
-        ])
-    else:
-        cursor = (
-            db["changes"].find(q, projection={"_id": 0})
-            .sort("timestamp", -1)
-            .skip(offset)
-            .limit(limit)
+        cursor = db["changes"].aggregate(
+            [
+                {"$match": q},
+                {
+                    "$addFields": {
+                        "severity_rank": {
+                            "$switch": {
+                                "branches": [
+                                    {"case": {"$eq": ["$severity", name]}, "then": rank}
+                                    for name, rank in SEVERITY_ORDER.items()
+                                ],
+                                "default": 9,
+                            }
+                        }
+                    }
+                },
+                {"$sort": {"severity_rank": 1, "timestamp": -1}},
+                {"$skip": offset},
+                {"$limit": limit},
+                {"$project": {"_id": 0, "severity_rank": 0}},
+            ]
         )
+    else:
+        cursor = db["changes"].find(q, projection={"_id": 0}).sort("timestamp", -1).skip(offset).limit(limit)
     items = [doc async for doc in cursor]
     return {"items": items, "count": len(items)}

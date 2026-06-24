@@ -9,15 +9,12 @@ the feed is either noise or silence.
 
 from __future__ import annotations
 
-import pytest
-
 from app.analysis.significance import (
     COSMETIC,
     CRITICAL,
     LARGE_PRICE_MOVE,
     MINOR,
     NOTABLE,
-    ChangeAssessment,
     classify,
     sort_key,
 )
@@ -58,16 +55,12 @@ class TestPriceMovement:
         assert assessment.signals.get("price_from_zero") is True
 
     def test_the_two_price_fields_are_reported_once(self):
-        assessment = classify(
-            [diff("price_incl_tax", 50.0, 30.0), diff("price_excl_tax", 45.0, 27.0)]
-        )
+        assessment = classify([diff("price_incl_tax", 50.0, 30.0), diff("price_excl_tax", 45.0, 27.0)])
         price_reasons = [r for r in assessment.reasons if "price" in r]
         assert len(price_reasons) == 1
 
     def test_an_unparseable_price_is_ignored_rather_than_crashing(self):
-        assert classify([diff("price_incl_tax", "n/a", 30.0)]).severity in {
-            MINOR, NOTABLE, CRITICAL, COSMETIC
-        }
+        assert classify([diff("price_incl_tax", "n/a", 30.0)]).severity in {MINOR, NOTABLE, CRITICAL, COSMETIC}
 
 
 class TestStock:
@@ -97,23 +90,17 @@ class TestCosmetic:
     def test_cosmetic_plus_substantive_is_not_cosmetic(self):
         # The whole failure mode being avoided: a real change hidden because a
         # trivial one was recorded in the same crawl.
-        assessment = classify(
-            [diff("description", "x", "y"), diff("availability", 10, 0)]
-        )
+        assessment = classify([diff("description", "x", "y"), diff("availability", 10, 0)])
         assert assessment.severity == CRITICAL
 
     def test_the_cosmetic_field_is_still_mentioned(self):
-        assessment = classify(
-            [diff("description", "x", "y"), diff("availability", 10, 0)]
-        )
+        assessment = classify([diff("description", "x", "y"), diff("availability", 10, 0)])
         assert any("description" in r for r in assessment.reasons)
 
 
 class TestSeverityCombination:
     def test_the_worst_signal_wins(self):
-        assessment = classify(
-            [diff("price_incl_tax", 50.0, 20.0), diff("availability", 8, 0)]
-        )
+        assessment = classify([diff("price_incl_tax", 50.0, 20.0), diff("availability", 8, 0)])
         assert assessment.severity == CRITICAL
         assert len(assessment.reasons) >= 2
 

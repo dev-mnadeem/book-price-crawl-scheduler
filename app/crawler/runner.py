@@ -5,10 +5,10 @@ import logging
 
 from app.config.logging import setup_logging
 from app.config.settings import settings
-from app.db.indexes import ensure_indexes
-from app.db.mongo import close_client, get_db
 from app.crawler.crawler import run_full_crawl
+from app.db.indexes import ensure_indexes
 from app.db.locks import acquire_lock, release_lock
+from app.db.mongo import close_client, get_db
 
 logger = logging.getLogger(__name__)
 

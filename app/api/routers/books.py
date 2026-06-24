@@ -23,7 +23,7 @@ router = APIRouter(
     "",
     response_model=PaginatedBooks,
     summary="List books",
-    description="Browse the catalog with optional filters for category, price range, rating; supports sorting and pagination.",
+    description="Browse the catalog filtered by category, price range and rating, with sorting and pagination.",
 )
 async def list_books(
     db: AsyncIOMotorDatabase = DBDep,
@@ -31,7 +31,9 @@ async def list_books(
     min_price: Optional[float] = Query(default=None, ge=0, description="Minimum price_incl_tax."),
     max_price: Optional[float] = Query(default=None, ge=0, description="Maximum price_incl_tax."),
     rating: Optional[int] = Query(default=None, ge=0, le=5, description="Exact star rating to match (0-5)."),
-    sort_by: Literal["rating", "price", "reviews"] = Query(default="rating", description="Sort by rating, price, or reviews."),
+    sort_by: Literal["rating", "price", "reviews"] = Query(
+        default="rating", description="Sort by rating, price, or reviews."
+    ),
     order: Literal["asc", "desc"] = Query(default="desc", description="Sort order."),
     page: int = Query(default=1, ge=1, description="Page number (1-based)."),
     page_size: int = Query(default=20, ge=1, le=100, description="Items per page."),
@@ -59,7 +61,8 @@ async def list_books(
 
     total = await db["books"].count_documents(q)
     cursor = (
-        db["books"].find(q, projection={"_id": 0, "raw_html": 0, "content_hash": 0})
+        db["books"]
+        .find(q, projection={"_id": 0, "raw_html": 0, "content_hash": 0})
         # upc breaks ties so that books sharing a rating or price keep a fixed
         # order between pages instead of reshuffling across skip/limit calls.
         .sort([(field, direction), ("upc", 1)])

@@ -1,16 +1,10 @@
 from __future__ import annotations
 
-import sys
-import os
 import asyncio
 import uuid
+
 import pytest
 from fastapi.testclient import TestClient
-
-# Ensure project root on PYTHONPATH for 'app' imports when running pytest
-ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-if ROOT_DIR not in sys.path:
-    sys.path.insert(0, ROOT_DIR)
 
 from app.api.main import app
 from app.config.settings import settings
@@ -54,6 +48,7 @@ def api_key(monkeypatch) -> str:
     # Reset token bucket for this key if exists
     try:
         from app.utils import rate_limiter as rl
+
         rl._buckets.pop(key, None)  # type: ignore[attr-defined]
     except Exception:
         pass

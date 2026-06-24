@@ -17,4 +17,3 @@ def normalize_category(value: Optional[str]) -> Optional[str]:
         return None
     s = normalize_text(value) or ""
     return s.lower() or None
-

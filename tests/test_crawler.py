@@ -3,14 +3,12 @@ from __future__ import annotations
 import pytest
 
 import app.crawler.crawler as crawler_mod
-from app.crawler.crawler import run_full_crawl
 from app.config.settings import settings as cfg
-from app.utils import http_client
+from app.crawler.crawler import run_full_crawl
 
 
 def html_root():
-    return (
-        """
+    return """
         <html><body>
         <ul class="nav-list">
           <ul>
@@ -20,7 +18,6 @@ def html_root():
         </ul>
         </body></html>
         """
-    )
 
 
 def html_listing_travel(page: int = 1):
@@ -46,8 +43,17 @@ def html_listing_fiction():
     """
 
 
-def detail_page(upc: str, name: str, category: str, price_incl: float, price_excl: float, availability: int, rating: int, num_reviews: int):
-    rating_class = {1:"One",2:"Two",3:"Three",4:"Four",5:"Five"}[rating]
+def detail_page(
+    upc: str,
+    name: str,
+    category: str,
+    price_incl: float,
+    price_excl: float,
+    availability: int,
+    rating: int,
+    num_reviews: int,
+):
+    rating_class = {1: "One", 2: "Two", 3: "Three", 4: "Four", 5: "Five"}[rating]
     return f"""
     <html><body>
       <ul class="breadcrumb">
@@ -105,7 +111,9 @@ async def test_crawl_insert_update_and_resume(fake_db, monkeypatch):
     assert summary2["updated"] == 1
 
     # Resume scenario: set crawl_state to skip first category (i.e index=1 -> Fiction only)
-    await fake_db["crawl_state"].update_one({"name": "full_crawl"}, {"$set": {"name": "full_crawl", "category_index": 1}}, upsert=True)
+    await fake_db["crawl_state"].update_one(
+        {"name": "full_crawl"}, {"$set": {"name": "full_crawl", "category_index": 1}}, upsert=True
+    )
     # Reset mapping to original prices
     mapping["http://site/book/b1.html"] = detail_page("UPC-B1", "Book 1", "Travel", 10.00, 9.00, 10, 4, 2)
     mapping["http://site/book/b2.html"] = detail_page("UPC-B2", "Book 2", "Travel", 5.00, 4.50, 5, 2, 1)

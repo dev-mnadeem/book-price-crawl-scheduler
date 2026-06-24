@@ -28,33 +28,97 @@ CATEGORIES = [("Travel", "travel_2"), ("Poetry", "poetry_23"), ("Mystery", "myst
 
 # slug, title, category, price, stock, rating, reviews, description
 V1 = [
-    ("salt-roads-of-the-north_101", "Salt Roads of the North", "Travel", 40.00, 12, 4, 0,
-     "A walking account of the old salt routes between the fjords and the inland markets."),
-    ("night-trains-to-anywhere_102", "Night Trains to Anywhere", "Travel", 18.40, 4, 3, 0,
-     "Sleeper carriages, missed connections and the strangers met between them."),
-    ("the-cartographers-holiday_103", "The Cartographer's Holiday", "Travel", 26.99, 7, 5, 1,
-     "A mapmaker takes a month off and cannot stop correcting the tourist maps."),
-    ("harbour-lights-and-ferries_104", "Harbour Lights and Ferries", "Travel", 20.00, 9, 2, 0,
-     "Island hopping on the slow boats, one timetable at a time."),
-    ("small-hours-sonnets_201", "Small Hours Sonnets", "Poetry", 13.50, 15, 4, 0,
-     "Fourteen-line poems written between midnight and dawn."),
-    ("weather-for-beginners_202", "Weather for Beginners", "Poetry", 31.20, 6, 3, 0,
-     "Short poems about rain, fog and the forecasts that got it wrong."),
-    ("the-locked-greenhouse_301", "The Locked Greenhouse", "Mystery", 22.75, 3, 5, 2,
-     "A botanist is found inside a greenhouse locked from the inside."),
+    (
+        "salt-roads-of-the-north_101",
+        "Salt Roads of the North",
+        "Travel",
+        40.00,
+        12,
+        4,
+        0,
+        "A walking account of the old salt routes between the fjords and the inland markets.",
+    ),
+    (
+        "night-trains-to-anywhere_102",
+        "Night Trains to Anywhere",
+        "Travel",
+        18.40,
+        4,
+        3,
+        0,
+        "Sleeper carriages, missed connections and the strangers met between them.",
+    ),
+    (
+        "the-cartographers-holiday_103",
+        "The Cartographer's Holiday",
+        "Travel",
+        26.99,
+        7,
+        5,
+        1,
+        "A mapmaker takes a month off and cannot stop correcting the tourist maps.",
+    ),
+    (
+        "harbour-lights-and-ferries_104",
+        "Harbour Lights and Ferries",
+        "Travel",
+        20.00,
+        9,
+        2,
+        0,
+        "Island hopping on the slow boats, one timetable at a time.",
+    ),
+    (
+        "small-hours-sonnets_201",
+        "Small Hours Sonnets",
+        "Poetry",
+        13.50,
+        15,
+        4,
+        0,
+        "Fourteen-line poems written between midnight and dawn.",
+    ),
+    (
+        "weather-for-beginners_202",
+        "Weather for Beginners",
+        "Poetry",
+        31.20,
+        6,
+        3,
+        0,
+        "Short poems about rain, fog and the forecasts that got it wrong.",
+    ),
+    (
+        "the-locked-greenhouse_301",
+        "The Locked Greenhouse",
+        "Mystery",
+        22.75,
+        3,
+        5,
+        2,
+        "A botanist is found inside a greenhouse locked from the inside.",
+    ),
 ]
 
 V2_CHANGES = {
-    "salt-roads-of-the-north_101": {"price": 28.00},          # -30%: critical
-    "night-trains-to-anywhere_102": {"stock": 0},            # sold out: critical
-    "harbour-lights-and-ferries_104": {"price": 19.50},       # -2.5%: minor
-    "small-hours-sonnets_201": {"stock": 3},                  # low stock: notable
+    "salt-roads-of-the-north_101": {"price": 28.00},  # -30%: critical
+    "night-trains-to-anywhere_102": {"stock": 0},  # sold out: critical
+    "harbour-lights-and-ferries_104": {"price": 19.50},  # -2.5%: minor
+    "small-hours-sonnets_201": {"stock": 3},  # low stock: notable
     "weather-for-beginners_202": {"description": "Short poems about rain, fog and every forecast that got it wrong."},
     "the-locked-greenhouse_301": {"rating": 4, "reviews": 3},  # minor
 }
 V2_NEW = [
-    ("a-lighthouse-in-winter_105", "A Lighthouse in Winter", "Travel", 24.10, 8, 4, 0,
-     "Three months as the relief keeper on a rock in the North Atlantic."),
+    (
+        "a-lighthouse-in-winter_105",
+        "A Lighthouse in Winter",
+        "Travel",
+        24.10,
+        8,
+        4,
+        0,
+        "Three months as the relief keeper on a rock in the North Atlantic.",
+    ),
 ]
 
 
@@ -64,7 +128,7 @@ def upc_for(slug: str) -> str:
 
 def page(title: str, body: str) -> str:
     return (
-        "<!DOCTYPE html>\n<html lang=\"en-us\"><head><meta charset=\"utf-8\">"
+        '<!DOCTYPE html>\n<html lang="en-us"><head><meta charset="utf-8">'
         f"<title>{html.escape(title)} | Books to Scrape (demo)</title></head>\n<body>\n{body}\n</body></html>\n"
     )
 
@@ -158,7 +222,7 @@ def edition_v2() -> list[tuple]:
     fields = ["slug", "title", "category", "price", "stock", "rating", "reviews", "description"]
     books = []
     for book in V1:
-        row = dict(zip(fields, book))
+        row = dict(zip(fields, book, strict=True))
         row.update(V2_CHANGES.get(row["slug"], {}))
         books.append(tuple(row[f] for f in fields))
     return books + V2_NEW

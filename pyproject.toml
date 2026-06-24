@@ -1,0 +1,23 @@
+[project]
+name = "books-monitor"
+version = "1.0.0"
+description = "Crawls a book catalogue, rates each change by severity and serves books and changes over a REST API."
+requires-python = ">=3.12,<3.13"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+asyncio_mode = "strict"
+asyncio_default_fixture_loop_scope = "function"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+extend-exclude = ["demo/site"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+
+[tool.ruff.lint.per-file-ignores]
+# HTML templates read better unwrapped.
+"demo/build_site.py" = ["E501"]
