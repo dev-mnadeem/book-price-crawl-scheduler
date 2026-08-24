@@ -1,13 +1,59 @@
-version: '3.9'
+# Mongo, the API, and a one-shot crawl to populate it.
+#
+# The previous compose defined only Mongo, so "run this project" still meant
+# a virtualenv and three terminals. The application itself is containerised
+# now, and the crawler runs as a job that the API waits for.
 services:
   mongo:
     image: mongo:6.0
     restart: unless-stopped
-    ports:
-      - "27017:27017"
     environment:
       MONGO_INITDB_DATABASE: books_monitor
+    # Not published to the host: nothing outside this network needs it, and
+    # 27017 is a common local port to collide with.
     volumes:
       - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 5s
+
+  crawl:
+    build: &build { context: ., dockerfile: Dockerfile }
+    image: books-monitor:local
+    command: ["python", "-m", "app.crawler.runner"]
+    environment: &env
+      MONGODB_URI: mongodb://mongo:27017
+      MONGODB_DB: books_monitor
+      API_KEYS: ${API_KEYS:-dev-key-1}
+      # The API runs its own scheduler by default; with a dedicated crawl job
+      # that would mean two crawlers racing over the same collection.
+      RUN_SCHEDULER_IN_API: "false"
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    depends_on:
+      mongo: { condition: service_healthy }
+
+  api:
+    build: *build
+    image: books-monitor:local
+    container_name: books_api
+    environment: *env
+    ports: ["8800:8000"]
+    depends_on:
+      mongo: { condition: service_healthy }
+      crawl: { condition: service_completed_successfully }
+    healthcheck:
+      # /health requires an API key like every other route. The healthcheck
+      # supplies one rather than the endpoint being opened up.
+      # Compose interpolates $VAR itself, so the $ is doubled to reach the
+      # shell inside the container, which reads API_KEYS from the env above.
+      test: ["CMD-SHELL", "curl -fsS -H \"X-API-Key: $${API_KEYS%%,*}\" http://localhost:8000/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 5s
+
 volumes:
   mongo-data:
