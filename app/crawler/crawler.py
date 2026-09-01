@@ -8,6 +8,7 @@ from typing import Dict, List, Optional, Tuple
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from app.config.settings import settings
+from app.analysis.significance import classify
 from app.models.change import ChangeLog, FieldDiff
 from app.utils.hashing import content_hash
 from app.utils.text import normalize_category
@@ -86,7 +87,13 @@ async def _process_book(url: str, db: AsyncIOMotorDatabase, sem: asyncio.Semapho
                 }
                 await db["books"].insert_one(doc)
                 await db["changes"].insert_one(
-                    ChangeLog(book_upc=parsed["upc"], change_type="new", changes=[], timestamp=now).model_dump()
+                    ChangeLog(
+                        book_upc=parsed["upc"],
+                        change_type="new",
+                        changes=[],
+                        timestamp=now,
+                        **classify([], "new").as_dict(),
+                    ).model_dump()
                 )
                 return url, "inserted"
             else:
@@ -109,7 +116,13 @@ async def _process_book(url: str, db: AsyncIOMotorDatabase, sem: asyncio.Semapho
                         },
                     )
                     await db["changes"].insert_one(
-                        ChangeLog(book_upc=parsed["upc"], change_type="update", changes=diffs, timestamp=now).model_dump()
+                        ChangeLog(
+                            book_upc=parsed["upc"],
+                            change_type="update",
+                            changes=diffs,
+                            timestamp=now,
+                            **classify(diffs, "update").as_dict(),
+                        ).model_dump()
                     )
                     return url, "updated"
                 else:
