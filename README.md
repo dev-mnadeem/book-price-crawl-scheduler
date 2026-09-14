@@ -31,7 +31,7 @@ You need a local MongoDB.
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-lock.txt
 cp .env.example .env
 python -m app.crawler.runner          # one full crawl
 uvicorn app.api.main:app --reload     # API on port 8000
@@ -54,3 +54,38 @@ or `pytest` from a local virtualenv. The API and crawler tests swap in an in-mem
 - The 20% and 5% price thresholds are fixed defaults, not tuned per title.
 - Description edits are always treated as cosmetic, even if the meaning changes.
 - Changes stored before severity was added have `severity: null` and are skipped by the severity filters.
+
+## Crawl and query flow
+
+```mermaid
+flowchart LR
+    Schedule[APScheduler or manual runner] --> Lock[Mongo crawl lock]
+    Lock --> Fetch[Fetch catalogue HTML]
+    Fetch --> Parse[Parse and normalize book fields]
+    Parse --> Compare[Compare content hash and field values]
+    Compare --> Books[(Mongo books)]
+    Compare --> Assess[Assess change severity]
+    Assess --> Changes[(Mongo changes)]
+    Key[API key and rate limit] --> API[Books and changes endpoints]
+    Books --> API
+    Changes --> API
+```
+
+## Verified native API example
+
+![Native catalogue API responses](docs/screenshots/native-api.png)
+
+The [response capture](docs/native-api.json) comes from a real disposable MongoDB
+with one explicitly synthetic book. It verifies API-key enforcement, normalized
+category filtering, pagination, and detail lookup. The scheduler was disabled;
+this check did not crawl the public website. The crawler's parsing and change
+rules are exercised by the offline suite.
+
+`requirements.txt` holds dependency inputs; `requirements-lock.txt` freezes the
+Python 3.12 environment used for the local checks and CI. The unit/API tests use
+the repository's fake database; the native capture uses MongoDB itself. Docker
+images have not been built or booted in this environment.
+
+## Author
+
+[**Muhammad Nadeem**](https://github.com/dev-mnadeem)

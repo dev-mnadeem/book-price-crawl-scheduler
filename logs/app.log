@@ -1,0 +1,5 @@
+{"level":"INFO","time":"2026-10-28T20:45:28+0500","name":"app.db.mongo","message":"Creating MongoDB client","module":"mongo","func":"get_client","line":18}
+{"level":"INFO","time":"2026-10-28T20:45:29+0500","name":"app.db.indexes","message":"MongoDB indexes ensured","module":"indexes","func":"ensure_indexes","line":33}
+{"level":"INFO","time":"2026-10-28T20:45:29+0500","name":"app.api.main","message":"API startup complete","module":"main","func":"on_startup","line":40}
+{"level":"INFO","time":"2026-10-28T20:45:30+0500","name":"app.db.mongo","message":"Closing MongoDB client","module":"mongo","func":"close_client","line":31}
+{"level":"INFO","time":"2026-10-28T20:45:30+0500","name":"app.api.main","message":"API shutdown complete","module":"main","func":"on_shutdown","line":48}
